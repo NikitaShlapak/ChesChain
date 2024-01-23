@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %} Главная {% endblock %}
+
+{% block content %}
+
+
+  <style>
+
+ .light { background: #f0d9b5; }
+ .dark { background: #b58863; }
+ .sq {width:12.5%;height:12.5%}
+ .demo_chessboard {width:250px;height:250px;}
+ .piece {top:0px;left:0px;width:100%;height:100%;}
+
+
+</style>
+
+
+
+<div class="m-5">
+
+<h2>
+    Введите название искомой конаты</h2><br>
+    <input id="room-name-input" type="text" size="100">
+    <input id="room-name-submit" type="button" value="Enter">
+
+
+<div class="d-flex flex-wrap">
+
+    {% for room in rooms %}
+
+    <div class="card w-25 m-1">
+
+        <div class="card-header">
+            <h3><a href="{% url 'board' room.name %}">{{ room.name }}</a></h3><br>
+            <h4>{{ room.admin.username }}</h4>
+            <p class="text-primary"> {{ room.type }} | {{ room.status }}</p>
+        </div>
+        <div class="card-body">
+
+             <div class="d-flex align-content-stretch flex-wrap demo_chessboard" data-position="{{ room.main_position }}"
+             data-name="{{ room.name }}">
+
+             {% for sq in board %}
+                <div class="sq {% cycle 'light' 'dark' 'light' 'dark' 'light' 'dark' 'light' 'dark' 'dark' 'light' 'dark' 'light' 'dark' 'light' 'dark' 'light' %}"
+                     id="{{ sq }}_{{ room.name }}">
+
+                </div>
+             {% endfor %}
+
+             </div>
+
+        </div>
+        <div class="card-footer">
+            <i class="text text-end">{{ room.creation_time }}</i>
+        </div>
+
+    </div>
+
+    {% endfor %}
+</div>
+</div>
+
+    <script>
+        document.querySelector('#room-name-input').focus();
+        document.querySelector('#room-name-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // enter, return
+                document.querySelector('#room-name-submit').click();
+            }
+        };
+
+        document.querySelector('#room-name-submit').onclick = function(e) {
+            var roomName = document.querySelector('#room-name-input').value;
+            window.location.pathname = '/chat/' + roomName + '/';
+        };
+
+
+
+document.querySelectorAll('.demo_chessboard').forEach( board =>{
+    let pos = board.getAttribute('data-position')
+    let appendix = '_'+board.getAttribute('data-name')
+    console.log(board, appendix)
+    LoadPos(pos, appendix)
+})
+
+
+
+
+
+function LoadPos(pos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR', appendix=''){
+//rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+//rnbqkbnr/pp2pp1p/1p5p/8/3pP2P/8/PP1P1PP1/RNBQKBNR
+
+    console.log(pos)
+    let h = 8
+    let j = 0
+    let fig_name = ""
+    for (var i=0;i<pos.length;i++){
+        console.log(!!(pos[i]*1), pos[i])
+        if (!!(pos[i]*1)){
+            j=j+pos[i]*1
+            console.log('line',h,j)
+        } else if (pos[i] == '/'){
+            j=0
+            h--
+        } else {
+            if (pos[i]==pos[i].toUpperCase()){
+                fig_name = 'w'+pos[i].toUpperCase()+".png"
+            } else {
+                fig_name = 'b'+pos[i].toUpperCase()+".png"
+            }
+            let id =h+""+(j+1)+appendix
+            let fig = document.createElement("img")
+            fig.src = "{% static 'board' %}/images/"+fig_name
+            fig.classList.add("piece")
+            fig.alt =fig_name[0]+pos[i].toUpperCase()
+            console.log(id)
+            PlacePiece(fig, id)
+            j++
+        }
+    }
+}
+
+function PlacePiece(piece, square_id){
+    let square = document.getElementById(square_id)
+    console.log(square)
+    if (square.firstElementChild){
+            square.firstElementChild.remove();
+        }
+        square.append(piece);
+}
+
+    </script>
+{% endblock %}

@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %} Доска | {{ room }} {% endblock %}
+
+{% block content %}
+
+
+  <style>
+
+ .light { background: #f0d9b5; }
+ .dark { background: #b58863; }
+ .sq {width:64px;height:64px}
+ #chessboard {width:512px;height:512px;}
+ .piece {top:0px;left:0px;width:100%;height:100%;cursor:grab}
+
+
+</style>
+  <div class="container-fluid pt-4 text-center">
+
+   <div class="row w-100">
+
+       <div class="col-md-2 col-sm-12 border">Панель управления
+
+           <br>
+
+           <button type="button" class="btn btn-primary mb-1" id="LoadPosition">Load Position</button>
+           <button type="button" class="btn btn-primary mb-1" id="Clear">Clear Position</button>
+           <button type="button" class="btn btn-primary mb-1" id="PrintPosition">Print Position</button>
+           <button type="button" class="btn btn-primary mb-1" id="LoadDefaultPosition">Load Default Position</button>
+
+
+
+       </div>
+
+       <div class="col-md-8 col-sm-12">
+
+         <div class="d-flex align-content-stretch flex-wrap" id="chessboard">
+
+             {% for sq in board %}
+                <div class="sq {% cycle 'light' 'dark' 'light' 'dark' 'light' 'dark' 'light' 'dark' 'dark' 'light' 'dark' 'light' 'dark' 'light' 'dark' 'light' %}"
+                     id="{{ sq }}">
+
+                </div>
+             {% endfor %}
+
+         </div>
+
+
+
+
+
+
+
+
+
+
+        </div>
+        <div class="col-md-2 col-sm-12 border">Чат
+            <br>
+       <span class="border" id="cords" hidden="True">cords</span>
+            <br>
+       <span class="border" id="cords1" hidden="True">cords1</span>
+             <br>
+       <span class="border" id="cords2" hidden="True">cords2</span>
+
+            <div class="card mb-1 text-start">
+                <div class="card-header">
+                    <b>user1</b>
+                </div>
+                <div class="card-body">
+                    <i>Всем привет!</i>
+                </div>
+            </div>
+
+            <div class="card mb-1 text-start">
+                <div class="card-header">
+                    <b>user2</b>
+                </div>
+                <div class="card-body">
+                    <i>Привет!</i>
+                </div>
+            </div>
+
+            <div class="card mb-1 text-end">
+                <div class="card-header">
+                    <b>Вы</b>
+                </div>
+                <div class="card-body">
+                    <i>qq!</i>
+                </div>
+            </div>
+
+            <div class="card mb-1 text-start">
+                <div class="card-header">
+                    <b>user3</b>
+                </div>
+                <div class="card-body">
+                    <i>Давайте начинать уже</i>
+                </div>
+            </div>
+
+
+            </div>
+   </div>
+
+ </div>
+
+<script>
+
+
+
+
+const boardSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            +'/ws/chat/board/'
+            + '{{ room.name }}'
+
+        );
+
+        boardSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log('received data:', data.position, typeof e.data)
+            clearBoard()
+            LoadPos(data.position)
+            initScripts()
+        };
+
+        boardSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+
+
+function sendMove(){
+            boardSocket.send(JSON.stringify({
+                'position': getFEN()
+            }));
+        };
+
+
+
+
+
+
+
+document.getElementById("PrintPosition").onclick = function(e){
+    console.log(getFEN())
+}
+document.getElementById("Clear").onclick = function(e){
+    clearBoard()
+    console.log('cleared')
+}
+document.getElementById("LoadPosition").onclick = function(e){
+    clearBoard()
+    LoadPos()
+    initScripts()
+    console.log('position loaded')
+}
+
+document.getElementById("LoadDefaultPosition").onclick = function(e){
+    clearBoard()
+    LoadPos('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')
+    initScripts()
+    console.log('position loaded')
+}
+
+
+
+
+
+
+    let span = document.getElementById("cords");
+    let span1 = document.getElementById("cords1");
+    let span2 = document.getElementById("cords2");
+
+    let board = document.getElementById("chessboard")
+
+
+
+
+function getFEN(appendix=''){
+    let pos = ''
+    let emp = 0
+    for (let i =1;i<=8;i++){
+        if (emp){
+            pos = pos+emp
+        }
+        if (pos){
+            pos=pos+"/"
+        }
+        emp = 0
+        for (let j =1;j<=8;j++){
+            let id = 9-i+''+j+appendix
+            let sq = document.getElementById(id)
+            if (sq.firstElementChild){
+                if (emp){
+                    pos = pos+emp
+                }
+                if (sq.firstElementChild.alt[0] == 'w'){
+                    pos = pos + sq.firstElementChild.alt[1].toUpperCase()
+                    emp = 0
+                } else {
+                    pos = pos + sq.firstElementChild.alt[1].toLowerCase()
+                    emp = 0
+                }
+            } else {
+                emp++
+            }
+        }
+    }
+    return pos
+}
+
+function LoadPos(pos = '{{ room.main_position }}', appendix=''){
+//rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+//rnbqkbnr/pp2pp1p/1p5p/8/3pP2P/8/PP1P1PP1/RNBQKBNR
+
+    console.log(pos)
+    let h = 8
+    let j = 0
+    let fig_name = ""
+    for (var i=0;i<pos.length;i++){
+        console.log(!!(pos[i]*1), pos[i])
+        if (!!(pos[i]*1)){
+            j=j+pos[i]*1
+            console.log('line',h,j)
+        } else if (pos[i] == '/'){
+            j=0
+            h--
+        } else {
+            if (pos[i]==pos[i].toUpperCase()){
+                fig_name = 'w'+pos[i].toUpperCase()+".png"
+            } else {
+                fig_name = 'b'+pos[i].toUpperCase()+".png"
+            }
+            let id =h+""+(j+1)+appendix
+            let fig = document.createElement("img")
+            fig.src = "{% static 'board' %}/images/"+fig_name
+            fig.classList.add("piece")
+            fig.alt =fig_name[0]+pos[i].toUpperCase()
+            PlacePiece(fig, id)
+            j++
+        }
+    }
+}
+
+function PlacePiece(piece, square_id){
+    let square = document.getElementById(square_id)
+    if (square.firstElementChild){
+            square.firstElementChild.remove();
+        }
+        square.append(piece);
+}
+
+function clearBoard(id='chessboard'){
+    let board = document.getElementById(id)
+    let squares = board.querySelectorAll(".sq")
+    squares.forEach(square => {
+                if (square.firstElementChild){
+                    square.firstElementChild.remove();
+                }
+            })
+}
+
+let currentPiece = {
+    type:"*",
+    from:[0,0],
+    to:[0,0],
+    get move() {
+        function Square(x, y, reverse) {
+            x = 1+Math.floor((x-board.offsetLeft)/64); //ver
+            y = 8-Math.floor((y-board.offsetTop)/64);//hor
+
+            let ans = "Вне доски";
+            let cords = ["a","b","c","d","e","f","g","h"];
+                if ( y>=1 && x>=1 && y<=8 && x<=8  ) {
+                    if (reverse){
+                    ans = cords[8-x]+(y)
+                    } else {
+                    ans = cords[x-1]+(y)
+                    }
+                }
+            return ans
+        }
+        return( Square(this.from[0],this.from[1])+"-"+Square(this.to[0],this.to[1]) )
+    }
+}
+
+
+
+function createAvatar(elem) {
+      var avatar = document.createElement("img")
+      avatar.src = elem.src
+      avatar.style.height=avatar.style.width=elem.clientWidth*0.75+'px'
+      avatar.style.cursor= "none";
+      avatar.style.position = 'absolute';
+      avatar.style.zIndex = 1000;
+      document.body.append(avatar);
+
+      avatar.ondragstart = function() {
+          return false;
+        };
+
+      return avatar;
+}
+
+function findDroppable(drop, x, y) {
+  drop.hidden = true;
+  var elem = document.elementFromPoint(x, y);
+  drop.hidden = false;
+  if (elem == null) {
+    return null;
+  }
+  return elem.closest('.sq');
+}
+
+function moveAt(elem, pageX, pageY) {
+    elem.style.left = pageX - elem.offsetWidth / 2 + 5 +'px';
+    elem.style.top = pageY - elem.offsetHeight /2 + 5 +'px';
+}
+
+function initScripts(){
+    document.querySelectorAll(".piece").forEach( (ball) => {
+
+        ball.ondragstart = function() {
+            return false;
+          };
+
+        ball.onmousedown = function(event) {
+          let shiftX = event.clientX - ball.getBoundingClientRect().left;
+          let shiftY = event.clientY - ball.getBoundingClientRect().top;
+
+          currentPiece.type = ball.alt;
+          currentPiece.from = [ event.pageX, event.pageY ]
+
+          let avatar = createAvatar(ball)
+
+          avatar.onmouseup = function(event) {
+            document.removeEventListener('mousemove', onMouseMove);
+            avatar.onmouseup = null;
+            let square = findDroppable(avatar, event.clientX, event.clientY)
+            //console.log(square)
+            if (square){
+                PlacePiece(piece=ball, to=square.id)
+                currentPiece.to = [ event.pageX, event.pageY ]
+                console.log("sending move:",currentPiece.move);
+                sendMove()
+            };
+            board.querySelector(".bg-primary").classList.remove("bg-primary");
+            avatar.hidden = "True";
+
+            span.innerText=currentPiece.type
+            span1.innerText=currentPiece.from + " - " + currentPiece.to
+            span2.innerText=currentPiece.move
+          };
+
+          moveAt(avatar, event.pageX, event.pageY);
+
+          let step = 5  ;
+          let oldX = event.pageX;
+          let oldY = event.pageY;
+          let sq = findDroppable(avatar, event.pageX, event.pageY)
+          sq.classList.add("bg-primary");
+          let prev_sq = findDroppable(avatar, event.pageX, event.pageY)
+
+          function onMouseMove(event) {
+            moveAt(avatar, event.pageX, event.pageY);
+            if (Math.abs(oldX-event.pageX)>step ||  Math.abs(oldY-event.pageY)>step){
+                sq = findDroppable(avatar, event.pageX, event.pageY)
+                sq.classList.add("bg-primary");
+                   if (sq != prev_sq){
+                       prev_sq.classList.remove("bg-primary");
+                       prev_sq = sq;
+                       oldX = event.pageX;
+                       oldY = event.pageY;
+                }
+            }
+          }
+          document.addEventListener('mousemove', onMouseMove);
+        };
+    })
+}
+
+LoadPos()
+initScripts()
+</script>
+
+{% endblock %}
